@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polly — PCOS Tracker for Real Cycles</title>
+<style>
+/* ── Tokens ── */
+:root {
+  --bg:        #FDFBFF;
+  --bg-alt:    #F3EFFE;
+  --bg-card:   #FFFFFF;
+  --text:      #1A0F30;
+  --text-2:    #5B4B7A;
+  --accent:    #7C3AED;
+  --accent-2:  #C8962B;
+  --accent-soft: #EDE9FD;
+  --border:    #E2D9F5;
+  --hero-bg:   #17102C;
+  --hero-text: #F0EAFF;
+  --hero-text-2: #B8A8D8;
+  --hero-border: #3A2860;
+  --amber-soft: #FDF3DC;
+  --green:     #3D8B6E;
+  --green-soft: #E3F5EE;
+  --radius:    8px;
+  --radius-lg: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #100C1E;
+    --bg-alt:    #1A1230;
+    --bg-card:   #231748;
+    --text:      #EDE6FF;
+    --text-2:    #A294C8;
+    --accent:    #A855F7;
+    --accent-2:  #F5B840;
+    --accent-soft: #2D1F50;
+    --border:    #342560;
+    --amber-soft: #2A1F08;
+    --green:     #5DC99C;
+    --green-soft: #0F2820;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:        #100C1E;
+  --bg-alt:    #1A1230;
+  --bg-card:   #231748;
+  --text:      #EDE6FF;
+  --text-2:    #A294C8;
+  --accent:    #A855F7;
+  --accent-2:  #F5B840;
+  --accent-soft: #2D1F50;
+  --border:    #342560;
+  --amber-soft: #2A1F08;
+  --green:     #5DC99C;
+  --green-soft: #0F2820;
+}
+
+:root[data-theme="light"] {
+  --bg:        #FDFBFF;
+  --bg-alt:    #F3EFFE;
+  --bg-card:   #FFFFFF;
+  --text:      #1A0F30;
+  --text-2:    #5B4B7A;
+  --accent:    #7C3AED;
+  --accent-2:  #C8962B;
+  --accent-soft: #EDE9FD;
+  --border:    #E2D9F5;
+  --amber-soft: #FDF3DC;
+  --green:     #3D8B6E;
+  --green-soft: #E3F5EE;
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 16px;
+}
+img { max-width: 100%; }
+a { color: var(--accent); text-decoration: none; }
+
+/* ── Typography ── */
+.display {
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', 'Georgia', serif;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); font-weight: 700; letter-spacing: -0.02em; }
+.h2 { font-size: clamp(1.7rem, 3.5vw, 2.5rem); font-weight: 600; letter-spacing: -0.015em; }
+.h3 { font-size: clamp(1.1rem, 2vw, 1.35rem); font-weight: 600; }
+.label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ── Layout ── */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+.section { padding: 96px 0; }
+.section-alt { background: var(--bg-alt); }
+
+/* ── Nav ── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(23, 16, 44, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--hero-border);
+}
+.nav-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  max-width: 1100px; margin: 0 auto; padding: 0 24px;
+  height: 60px;
+}
+.nav-logo {
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.35rem; font-weight: 700;
+  color: var(--hero-text); letter-spacing: -0.01em;
+}
+.nav-logo span { color: #C084F5; }
+.nav-links { display: flex; gap: 28px; align-items: center; }
+.nav-links a {
+  font-size: 0.88rem; color: var(--hero-text-2);
+  transition: color 0.15s;
+}
+.nav-links a:hover { color: var(--hero-text); }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: var(--radius);
+  font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  border: none; transition: all 0.15s; text-decoration: none;
+}
+.btn-primary {
+  background: var(--accent); color: #fff;
+}
+.btn-primary:hover { opacity: 0.88; }
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--hero-border);
+  color: var(--hero-text-2);
+}
+.btn-ghost:hover { border-color: #7B5FC0; color: var(--hero-text); }
+
+/* ── Hero ── */
+.hero {
+  background: var(--hero-bg);
+  padding: 140px 0 80px;
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-inner {
+  max-width: 1100px; margin: 0 auto; padding: 0 24px;
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(124,58,237,0.18);
+  border: 1px solid rgba(124,58,237,0.35);
+  border-radius: 20px;
+  padding: 5px 14px;
+  margin-bottom: 28px;
+}
+.hero-eyebrow-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #A78BFA;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.hero-eyebrow-text { color: #C4B5FD; font-size: 0.8rem; font-weight: 500; }
+.hero-headline {
+  color: var(--hero-text);
+  max-width: 760px;
+  margin-bottom: 20px;
+}
+.hero-sub {
+  color: var(--hero-text-2);
+  font-size: clamp(1rem, 1.8vw, 1.2rem);
+  max-width: 580px;
+  line-height: 1.65;
+  margin-bottom: 40px;
+}
+
+/* ── Email form ── */
+.email-form {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.email-input {
+  flex: 1; min-width: 240px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--hero-border);
+  border-radius: var(--radius);
+  color: var(--hero-text);
+  font-size: 0.95rem;
+  outline: none; transition: border-color 0.15s;
+}
+.email-input::placeholder { color: var(--hero-text-2); }
+.email-input:focus { border-color: #7B5FC0; }
+.btn-notify {
+  background: linear-gradient(135deg, #7C3AED, #9F5AF0);
+  color: #fff; border: none;
+  padding: 12px 24px; border-radius: var(--radius);
+  font-size: 0.95rem; font-weight: 600; cursor: pointer;
+  transition: opacity 0.15s; white-space: nowrap;
+}
+.btn-notify:hover { opacity: 0.88; }
+.form-note { font-size: 0.8rem; color: var(--hero-text-2); }
+.form-success {
+  display: none;
+  align-items: center; gap: 10px;
+  color: #86EFAC; font-size: 0.95rem; font-weight: 500;
+  margin-bottom: 16px;
+}
+.form-success svg { flex-shrink: 0; }
+
+/* ── Cycle visualization ── */
+.viz-wrapper {
+  margin-top: 64px;
+  border: 1px solid var(--hero-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.03);
+  padding: 28px 24px 16px;
+  position: relative;
+}
+.viz-label {
+  color: var(--hero-text-2); font-size: 0.75rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.viz-label::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--hero-border);
+}
+canvas#cycleChart {
+  width: 100%; height: 180px;
+  display: block;
+}
+.viz-legend {
+  display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap;
+}
+.viz-legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.75rem; color: var(--hero-text-2);
+}
+.viz-legend-dot {
+  width: 10px; height: 10px; border-radius: 3px;
+}
+
+/* ── Trust bar ── */
+.trust-bar {
+  background: rgba(255,255,255,0.04);
+  border-top: 1px solid var(--hero-border);
+  border-bottom: 1px solid var(--hero-border);
+  padding: 20px 0;
+  margin-top: -1px;
+}
+.trust-bar-inner {
+  max-width: 1100px; margin: 0 auto; padding: 0 24px;
+  display: flex; gap: 40px; align-items: center; flex-wrap: wrap;
+  justify-content: center;
+}
+.trust-item {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.85rem; color: var(--hero-text-2);
+}
+.trust-icon { font-size: 1rem; }
+
+/* ── Problem ── */
+.problem-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 60px; align-items: center;
+}
+.problem-quote {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 20px 24px;
+  margin: 24px 0;
+}
+.problem-quote p {
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.05rem; font-style: italic;
+  color: var(--text); line-height: 1.55;
+}
+.problem-quote cite {
+  display: block; margin-top: 8px;
+  font-size: 0.78rem; color: var(--text-2);
+  font-style: normal;
+}
+.problem-stat-group { display: flex; flex-direction: column; gap: 16px; }
+.problem-stat {
+  display: flex; align-items: flex-start; gap: 16px;
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.stat-num {
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 2rem; font-weight: 700;
+  color: var(--accent); line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.stat-label { font-size: 0.88rem; color: var(--text-2); margin-top: 4px; }
+
+/* ── Features ── */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 56px;
+}
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.feature-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.feature-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; margin-bottom: 16px;
+}
+.feature-title { font-weight: 600; font-size: 1rem; margin-bottom: 8px; }
+.feature-desc { font-size: 0.88rem; color: var(--text-2); line-height: 1.6; }
+
+/* ── Labs highlight ── */
+.labs-inner {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+}
+.lab-list { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+.lab-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.lab-name { font-size: 0.92rem; font-weight: 500; }
+.lab-value {
+  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  font-size: 0.88rem; font-variant-numeric: tabular-nums;
+}
+.lab-indicator {
+  width: 8px; height: 8px; border-radius: 50%;
+  flex-shrink: 0; margin-left: 10px;
+}
+.in-range { background: var(--green); }
+.borderline { background: var(--accent-2); }
+.canvas-labs { width: 100%; height: 200px; display: block; }
+.labs-canvas-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+/* ── Privacy ── */
+.privacy-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;
+  margin-top: 48px;
+}
+.privacy-card {
+  text-align: center; padding: 32px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.privacy-icon { font-size: 2rem; margin-bottom: 14px; display: block; }
+.privacy-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+.privacy-card p { font-size: 0.86rem; color: var(--text-2); line-height: 1.6; }
+.privacy-callout {
+  background: var(--green-soft);
+  border: 1px solid rgba(61, 139, 110, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 24px 32px;
+  margin-top: 32px;
+  display: flex; align-items: center; gap: 20px;
+}
+.privacy-callout-icon { font-size: 1.8rem; flex-shrink: 0; }
+.privacy-callout p { font-size: 0.95rem; color: var(--text); line-height: 1.6; }
+.privacy-callout strong { color: var(--green); }
+
+/* ── Pricing ── */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 56px;
+  align-items: start;
+}
+.price-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  position: relative;
+}
+.price-card.featured {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.price-badge {
+  position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #fff;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 20px; white-space: nowrap;
+}
+.price-name { font-size: 0.8rem; color: var(--text-2); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.price-amount {
+  display: flex; align-items: flex-end; gap: 4px;
+  margin: 12px 0 6px;
+}
+.price-num {
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 2.8rem; font-weight: 700; line-height: 1;
+  color: var(--text); font-variant-numeric: tabular-nums;
+}
+.price-period { font-size: 0.85rem; color: var(--text-2); padding-bottom: 6px; }
+.price-desc { font-size: 0.85rem; color: var(--text-2); margin-bottom: 24px; min-height: 36px; }
+.price-features { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+.price-feature {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.88rem; color: var(--text);
+}
+.price-feature-check { color: var(--green); font-weight: 700; flex-shrink: 0; }
+.btn-plan {
+  display: block; width: 100%; text-align: center;
+  padding: 12px; border-radius: var(--radius);
+  font-weight: 600; font-size: 0.92rem; cursor: pointer;
+  transition: all 0.15s; text-decoration: none;
+}
+.btn-plan-primary { background: var(--accent); color: #fff; border: none; }
+.btn-plan-primary:hover { opacity: 0.88; }
+.btn-plan-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-plan-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── FAQ ── */
+.faq-list { display: flex; flex-direction: column; gap: 2px; margin-top: 48px; }
+.faq-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden; margin-bottom: 8px;
+}
+.faq-q {
+  width: 100%; background: var(--bg-card);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px; text-align: left;
+  font-size: 0.97rem; font-weight: 500;
+  color: var(--text);
+}
+.faq-chevron { color: var(--text-2); transition: transform 0.2s; font-size: 0.8rem; }
+.faq-item.open .faq-chevron { transform: rotate(180deg); }
+.faq-a {
+  display: none;
+  padding: 0 22px 18px;
+  font-size: 0.9rem; color: var(--text-2); line-height: 1.7;
+  background: var(--bg-card);
+}
+.faq-item.open .faq-a { display: block; }
+
+/* ── Footer ── */
+.footer {
+  background: var(--hero-bg);
+  padding: 60px 0 32px;
+  margin-top: 0;
+}
+.footer-inner {
+  max-width: 1100px; margin: 0 auto; padding: 0 24px;
+}
+.footer-grid {
+  display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid var(--hero-border);
+  margin-bottom: 32px;
+}
+.footer-brand-name {
+  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.4rem; font-weight: 700; color: var(--hero-text);
+  margin-bottom: 10px;
+}
+.footer-brand-name span { color: #C084F5; }
+.footer-brand-desc { font-size: 0.86rem; color: var(--hero-text-2); line-height: 1.65; }
+.footer-col h4 {
+  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--hero-text-2);
+  margin-bottom: 16px;
+}
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.footer-col ul li a {
+  font-size: 0.88rem; color: var(--hero-text-2);
+  transition: color 0.15s;
+}
+.footer-col ul li a:hover { color: var(--hero-text); }
+.footer-bottom {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+}
+.footer-copy { font-size: 0.8rem; color: var(--hero-text-2); }
+
+/* ── Section headings ── */
+.section-intro { max-width: 600px; }
+.section-intro .label { color: var(--accent); margin-bottom: 12px; display: block; }
+.section-intro p { color: var(--text-2); margin-top: 12px; font-size: 1.02rem; line-height: 1.7; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .problem-grid, .labs-inner { grid-template-columns: 1fr; gap: 40px; }
+  .features-grid { grid-template-columns: 1fr 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
+  .privacy-grid { grid-template-columns: 1fr 1fr; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+}
+@media (max-width: 600px) {
+  .features-grid { grid-template-columns: 1fr; }
+  .privacy-grid { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .section { padding: 64px 0; }
+  .privacy-callout { flex-direction: column; gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-logo">Polly<span>.</span></div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://apps.apple.com/app/id6786916927" class="btn btn-primary" style="font-size:0.82rem;padding:8px 16px;">Download</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">
+      <div class="hero-eyebrow-dot"></div>
+      <span class="hero-eyebrow-text">Now available on the App Store</span>
+    </div>
+
+    <h1 class="h1 display hero-headline">
+      A PCOS tracker that doesn't charge you for months after you cancel.
+    </h1>
+    <p class="hero-sub">
+      Polly tracks your cycles, symptoms, labs, and medications — built for the irregular reality of PCOS. Everything stays on your iPhone. No account. No cloud.
+    </p>
+
+    <div class="form-success" id="formSuccess">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="9" fill="#22c55e"/><path d="M5 9l3 3 5-5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      You're on the list. We'll email you when Polly launches.
+    </div>
+
+    <form class="email-form" id="notifyForm">
+      <input type="email" class="email-input" placeholder="your@email.com" required>
+      <button type="submit" class="btn-notify">Notify me at launch</button>
+    </form>
+    <p class="form-note">Or download now &rarr; <a href="https://apps.apple.com/app/id6786916927" style="color:#C084F5;">App Store</a></p>
+
+    <!-- Cycle visualization -->
+    <div class="viz-wrapper">
+      <p class="viz-label">
+        <svg width="12" height="12" viewBox="0 0 12 12" style="margin-right:4px;opacity:0.6"><circle cx="6" cy="6" r="5" stroke="#B8A8D8" stroke-width="1.2" fill="none"/><path d="M6 3v3l2 2" stroke="#B8A8D8" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Your actual cycle length history
+      </p>
+      <canvas id="cycleChart"></canvas>
+      <div class="viz-legend">
+        <div class="viz-legend-item"><div class="viz-legend-dot" style="background:#9B59B6;"></div> Cycle length (days)</div>
+        <div class="viz-legend-item"><div class="viz-legend-dot" style="background:#F5B840;"></div> Your average</div>
+        <div class="viz-legend-item"><div class="viz-legend-dot" style="background:#5DC99C;"></div> "Typical" 28 days</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Trust bar -->
+<div class="trust-bar" style="background:var(--hero-bg);border-color:var(--hero-border);">
+  <div class="trust-bar-inner">
+    <div class="trust-item"><span class="trust-icon">🔒</span> All data stored on your iPhone</div>
+    <div class="trust-item"><span class="trust-icon">🚫</span> No account required</div>
+    <div class="trust-item"><span class="trust-icon">✋</span> Cancel anytime — your data stays</div>
+    <div class="trust-item"><span class="trust-icon">🩺</span> Doctor-ready PDF export</div>
+  </div>
+</div>
+
+<!-- Problem -->
+<section class="section" id="problem">
+  <div class="container">
+    <div class="problem-grid">
+      <div>
+        <div class="section-intro">
+          <span class="label">The problem</span>
+          <h2 class="h2 display">The PCOS tracking market has a trust problem.</h2>
+          <p>The most popular PCOS apps have collected hundreds of complaints on Reddit and in App Store reviews about unexpected charges, data shared with third parties, and subscription cancellations that don't actually cancel.</p>
+        </div>
+        <div class="problem-quote">
+          <p>"I cancelled 8 months ago and was still being charged. They had my health data and my credit card and apparently didn't need my permission for either."</p>
+          <cite>— r/PCOS, 847 upvotes</cite>
+        </div>
+        <p style="font-size:0.9rem;color:var(--text-2);">Polly was built as a direct response to these complaints. Local-first, subscription-honest, and technically verifiable: if there's no server, there's nothing to breach.</p>
+      </div>
+      <div class="problem-stat-group">
+        <div class="problem-stat">
+          <div>
+            <div class="stat-num">1 in 10</div>
+            <div class="stat-label">women of reproductive age have PCOS — yet most cycle apps assume a 28-day cycle</div>
+          </div>
+        </div>
+        <div class="problem-stat">
+          <div>
+            <div class="stat-num">35–90</div>
+            <div class="stat-label">days — the common range of a PCOS cycle. Polly doesn't assume anything</div>
+          </div>
+        </div>
+        <div class="problem-stat">
+          <div>
+            <div class="stat-num">15 min</div>
+            <div class="stat-label">is all you get with your endocrinologist. Polly helps you use every one</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="section section-alt" id="features">
+  <div class="container">
+    <div class="section-intro">
+      <span class="label">Features</span>
+      <h2 class="h2 display">Everything PCOS touches, in one place.</h2>
+      <p>Built around the six areas that actually matter for PCOS management — not the six areas that look good in a screenshot.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#EDE9FD;">📅</div>
+        <div class="feature-title">Cycle Tracking</div>
+        <p class="feature-desc">Designed for irregular cycles. Log period start and end, track cycle length over time, and see patterns without 28-day assumptions baked in.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#FEF3C7;">🌡</div>
+        <div class="feature-title">Symptom Logging</div>
+        <p class="feature-desc">Acne, fatigue, brain fog, bloating, mood, cramps, hirsutism — and custom symptoms you define. Rate severity. See trends over months.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--green-soft);">🧪</div>
+        <div class="feature-title">Lab Values</div>
+        <p class="feature-desc">Track testosterone, LH, FSH, DHEA, AMH, insulin, HbA1c, and more. Reference ranges shown. Trend lines across visits. Know when something's improving.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#FDF2F8;">💊</div>
+        <div class="feature-title">Medication Logging</div>
+        <p class="feature-desc">Metformin, spironolactone, birth control, supplements. Check off doses daily. See your adherence streak. Never wonder if you took it.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#EFF6FF;">📄</div>
+        <div class="feature-title">Doctor Export</div>
+        <p class="feature-desc">A PDF summary of your symptoms, labs, and cycle history — organized the way a doctor wants to read it. Walk in prepared. Make the 15 minutes count.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--amber-soft);">⚡️</div>
+        <div class="feature-title">Insights</div>
+        <p class="feature-desc">Charts of your cycle lengths over time, top symptoms by frequency, energy trends across 90 days. Your data telling you something useful.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Labs callout -->
+<section class="section" id="labs">
+  <div class="container">
+    <div class="labs-inner">
+      <div>
+        <div class="section-intro">
+          <span class="label">Lab value tracking</span>
+          <h2 class="h2 display">Your labs tell a story. Polly helps you read it.</h2>
+          <p>Most PCOS management is about long-term trends — not single appointments. Polly stores every lab result so you can see whether testosterone is trending down, whether HbA1c is improving, whether LH:FSH is moving toward the right ratio.</p>
+        </div>
+        <div class="lab-list">
+          <div class="lab-row">
+            <span class="lab-name">Testosterone (total)</span>
+            <span style="display:flex;align-items:center;gap:8px;">
+              <span class="lab-value" style="color:var(--accent-2);">78 ng/dL</span>
+              <span class="lab-indicator borderline"></span>
+            </span>
+          </div>
+          <div class="lab-row">
+            <span class="lab-name">LH</span>
+            <span style="display:flex;align-items:center;gap:8px;">
+              <span class="lab-value" style="color:var(--text);">12.4 mIU/mL</span>
+              <span class="lab-indicator in-range"></span>
+            </span>
+          </div>
+          <div class="lab-row">
+            <span class="lab-name">AMH</span>
+            <span style="display:flex;align-items:center;gap:8px;">
+              <span class="lab-value" style="color:var(--text);">4.8 ng/mL</span>
+              <span class="lab-indicator in-range"></span>
+            </span>
+          </div>
+          <div class="lab-row">
+            <span class="lab-name">Fasting Insulin</span>
+            <span style="display:flex;align-items:center;gap:8px;">
+              <span class="lab-value" style="color:var(--accent-2);">18 µIU/mL</span>
+              <span class="lab-indicator borderline"></span>
+            </span>
+          </div>
+          <div class="lab-row">
+            <span class="lab-name">HbA1c</span>
+            <span style="display:flex;align-items:center;gap:8px;">
+              <span class="lab-value" style="color:var(--green);">5.4%</span>
+              <span class="lab-indicator in-range"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="labs-canvas-wrap">
+          <p style="font-size:0.75rem;color:var(--text-2);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px;">Testosterone trend (6 months)</p>
+          <canvas id="labsChart" class="canvas-labs"></canvas>
+        </div>
+        <p style="font-size:0.83rem;color:var(--text-2);margin-top:12px;line-height:1.6;">Reference ranges shown for each lab type. Tap any data point to see the full result from that date.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Privacy -->
+<section class="section section-alt" id="privacy">
+  <div class="container">
+    <div class="section-intro">
+      <span class="label">Privacy</span>
+      <h2 class="h2 display">Your health data isn't a product.</h2>
+      <p>Health data is among the most sensitive information a person generates. Polly was built from the ground up so that nothing you enter ever leaves your phone.</p>
+    </div>
+    <div class="privacy-grid">
+      <div class="privacy-card">
+        <span class="privacy-icon">📱</span>
+        <h3>On-device only</h3>
+        <p>All data is stored in Apple's SwiftData framework on your iPhone. Nothing is transmitted to any server — because there is no server.</p>
+      </div>
+      <div class="privacy-card">
+        <span class="privacy-icon">🔐</span>
+        <h3>No account required</h3>
+        <p>Polly never asks for your email, name, or any identifying information. You open the app and start tracking. That's it.</p>
+      </div>
+      <div class="privacy-card">
+        <span class="privacy-icon">🗑</span>
+        <h3>Delete is delete</h3>
+        <p>When you delete Polly, your data is gone. There's no backup copy in a database somewhere. There's no "30-day hold" period. It's your phone.</p>
+      </div>
+    </div>
+    <div class="privacy-callout">
+      <div class="privacy-callout-icon">🔍</div>
+      <p>The technical proof: Polly has no network entitlements and no API calls to external servers. You can verify this yourself with a packet sniffer — <strong>Polly makes zero outbound network requests</strong> with your health data. The App Store receipt check for subscriptions goes to Apple directly, not to us.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="section" id="pricing">
+  <div class="container">
+    <div class="section-intro">
+      <span class="label">Pricing</span>
+      <h2 class="h2 display">Simple. No surprises.</h2>
+      <p>Polly is free to download and use. Polly+ unlocks unlimited history, labs, export, and medications. Cancel through Apple at any time — your data stays on your phone.</p>
+    </div>
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="price-card">
+        <div class="price-name">Free</div>
+        <div class="price-amount">
+          <span class="price-num display">$0</span>
+        </div>
+        <p class="price-desc">30 days of history. Always free.</p>
+        <div class="price-features">
+          <div class="price-feature"><span class="price-feature-check">✓</span> Cycle tracking</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> Daily symptom logging</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> 30 days of history</div>
+          <div class="price-feature" style="color:var(--text-2);"><span style="color:var(--border);font-weight:700;">✕</span> Lab value tracking</div>
+          <div class="price-feature" style="color:var(--text-2);"><span style="color:var(--border);font-weight:700;">✕</span> Doctor PDF export</div>
+          <div class="price-feature" style="color:var(--text-2);"><span style="color:var(--border);font-weight:700;">✕</span> Medication logging</div>
+        </div>
+        <a href="https://apps.apple.com/app/id6786916927" class="btn-plan btn-plan-outline">Download free</a>
+      </div>
+
+      <!-- Monthly -->
+      <div class="price-card featured">
+        <div class="price-badge">Most popular</div>
+        <div class="price-name">Polly+ Monthly</div>
+        <div class="price-amount">
+          <span class="price-num display">$4.99</span>
+          <span class="price-period">/month</span>
+        </div>
+        <p class="price-desc">Less than a third the price of other PCOS apps.</p>
+        <div class="price-features">
+          <div class="price-feature"><span class="price-feature-check">✓</span> Everything in Free</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> Unlimited history</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> Lab value tracking</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> Doctor PDF export</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> Medication logging</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> Insights &amp; trend charts</div>
+        </div>
+        <a href="https://apps.apple.com/app/id6786916927" class="btn-plan btn-plan-primary">Start Polly+</a>
+      </div>
+
+      <!-- Annual -->
+      <div class="price-card">
+        <div class="price-name">Polly+ Annual</div>
+        <div class="price-amount">
+          <span class="price-num display">$34.99</span>
+          <span class="price-period">/year</span>
+        </div>
+        <p class="price-desc">7-day free trial. Save 42% vs monthly.</p>
+        <div class="price-features">
+          <div class="price-feature"><span class="price-feature-check">✓</span> Everything in Polly+</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> 7-day free trial</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> ~$2.91/month billed once</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> Cancel anytime via Apple</div>
+          <div class="price-feature"><span class="price-feature-check">✓</span> Family Sharing ready</div>
+          <div class="price-feature" style="color:var(--text-2);font-size:0.82rem;">Best value for long-term tracking</div>
+        </div>
+        <a href="https://apps.apple.com/app/id6786916927" class="btn-plan btn-plan-outline">Try free for 7 days</a>
+      </div>
+    </div>
+    <p style="text-align:center;font-size:0.82rem;color:var(--text-2);margin-top:24px;">Subscriptions managed by Apple. Cancel in Settings → Apple ID → Subscriptions. Your data remains on your phone regardless.</p>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section section-alt" id="faq">
+  <div class="container" style="max-width:760px;">
+    <div class="section-intro">
+      <span class="label">FAQ</span>
+      <h2 class="h2 display">Questions worth answering.</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q">
+          Is Polly actually free to download?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">Yes. Polly is free to download and use. The free tier includes 30 days of history and full cycle and symptom tracking. Polly+ adds unlimited history, labs, PDF export, and medications. There's no paywall on the core tracking features.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">
+          What data does Polly collect from me?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">None. Polly doesn't collect, transmit, or store any of your data anywhere other than your iPhone. The app has no user accounts, no analytics SDK, and no third-party data sharing. The only network request Polly makes is to Apple's servers to verify your subscription — and that contains zero health information.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">
+          What happens to my data if I cancel Polly+?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">Your data stays exactly where it is — on your phone. Cancelling Polly+ downgrades your account to the free tier (30-day history view), but nothing is deleted. If you re-subscribe, you'll have access to your full history again. If you delete the app, the data is deleted with it — because it only ever existed on your device.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">
+          Does Polly work on iPad?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">Yes. Polly runs on both iPhone and iPad. Many PCOS patients prefer iPad for reviewing lab trends and cycle history — the larger screen gives more room for charts.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">
+          How is Polly different from other PCOS apps?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-a">Three things: local-first privacy (your data never leaves your phone), honesty about billing (cancel through Apple, not through a support ticket), and PCOS-specific design (cycles aren't assumed to be 28 days, lab tracking is first-class, the export is built for doctor appointments). Most PCOS apps are period trackers with a PCOS label. Polly was designed from scratch for the actual complexity of PCOS management.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">Polly<span>.</span></div>
+        <p class="footer-brand-desc">A PCOS tracker built for real cycles, real labs, and real life. All data stays on your iPhone. No account required. No surprises.</p>
+      </div>
+      <div class="footer-col">
+        <h4>App</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="https://apps.apple.com/app/id6786916927">Download</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/terms">Terms of Use</a></li>
+          <li><a href="/support">Support</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="https://reddit.com/r/PCOS" target="_blank" rel="noopener">r/PCOS</a></li>
+          <li><a href="#">TikTok</a></li>
+          <li><a href="#">Instagram</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copy">© 2026 Polly Health. Made with care for the PCOS community.</p>
+      <p class="footer-copy">Not medical advice. Polly is a tracking tool, not a diagnostic system.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ── Email form ── */
+document.getElementById('notifyForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  this.style.display = 'none';
+  document.getElementById('formSuccess').style.display = 'flex';
+});
+
+/* ── FAQ accordion ── */
+document.querySelectorAll('.faq-q').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.parentElement;
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+    if (!isOpen) item.classList.add('open');
+  });
+});
+
+/* ── Cycle chart (hero) ── */
+(function() {
+  const canvas = document.getElementById('cycleChart');
+  const ctx = canvas.getContext('2d');
+  // Cycle lengths — deliberately irregular (PCOS realistic)
+  const cycles = [38, 52, 29, 44, 36, 47, 31, 42, 55, 33];
+  const avg = cycles.reduce((a, b) => a + b, 0) / cycles.length;
+  const typical = 28;
+  let progress = 0;
+  let animFrame;
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = 180 * dpr;
+    ctx.scale(dpr, dpr);
+    draw(progress);
+  }
+
+  function draw(p) {
+    const W = canvas.width / (window.devicePixelRatio || 1);
+    const H = 180;
+    ctx.clearRect(0, 0, W, H);
+
+    const pad = { l: 32, r: 20, t: 20, b: 36 };
+    const chartW = W - pad.l - pad.r;
+    const chartH = H - pad.t - pad.b;
+    const maxVal = 65;
+    const minVal = 20;
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(180,160,220,0.12)';
+    ctx.lineWidth = 1;
+    [28, 35, 42, 49, 56].forEach(v => {
+      const y = pad.t + chartH - ((v - minVal) / (maxVal - minVal)) * chartH;
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + chartW, y); ctx.stroke();
+    });
+
+    // Bars
+    const n = Math.ceil(p * cycles.length);
+    const barW = (chartW / cycles.length) * 0.6;
+    const gap = chartW / cycles.length;
+
+    cycles.slice(0, n).forEach((val, i) => {
+      const frac = i === n - 1 ? (p * cycles.length - (n - 1)) : 1;
+      const x = pad.l + i * gap + (gap - barW) / 2;
+      const barH = ((Math.min(val, maxVal) - minVal) / (maxVal - minVal)) * chartH * frac;
+      const y = pad.t + chartH - barH;
+
+      // Gradient fill
+      const grad = ctx.createLinearGradient(0, y, 0, pad.t + chartH);
+      grad.addColorStop(0, 'rgba(159,90,240,0.9)');
+      grad.addColorStop(1, 'rgba(124,58,237,0.3)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(x, y, barW, barH, [4, 4, 0, 0]);
+      ctx.fill();
+
+      // Value label
+      if (frac === 1 && barH > 20) {
+        ctx.fillStyle = 'rgba(240,234,255,0.8)';
+        ctx.font = '10px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(val + 'd', x + barW / 2, y - 4);
+      }
+    });
+
+    // Average line
+    const avgY = pad.t + chartH - ((avg - minVal) / (maxVal - minVal)) * chartH;
+    ctx.strokeStyle = 'rgba(245,184,64,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pad.l, avgY);
+    ctx.lineTo(pad.l + chartW * Math.min(p, 1), avgY);
+    ctx.stroke();
+
+    // Typical 28-day line
+    const typY = pad.t + chartH - ((typical - minVal) / (maxVal - minVal)) * chartH;
+    ctx.strokeStyle = 'rgba(93,201,156,0.5)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath();
+    ctx.moveTo(pad.l, typY);
+    ctx.lineTo(pad.l + chartW, typY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Labels
+    ctx.fillStyle = 'rgba(184,168,216,0.7)';
+    ctx.font = '10px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillText('Avg ' + Math.round(avg) + 'd', pad.l - 4, avgY + 4);
+    ctx.fillText('28d', pad.l - 4, typY + 4);
+
+    // X axis cycle numbers
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(184,168,216,0.5)';
+    ctx.font = '10px system-ui';
+    for (let i = 0; i < cycles.length; i++) {
+      const x = pad.l + i * gap + gap / 2;
+      ctx.fillText('Cycle ' + (i + 1), x, H - 6);
+    }
+  }
+
+  function animate() {
+    progress += 0.04;
+    if (progress >= 1) { progress = 1; draw(1); return; }
+    draw(progress);
+    animFrame = requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  // Start animation when hero enters view
+  const observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) { animate(); observer.disconnect(); }
+  }, { threshold: 0.3 });
+  observer.observe(canvas);
+})();
+
+/* ── Labs trend chart ── */
+(function() {
+  const canvas = document.getElementById('labsChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  // Testosterone values over 6 months (trending down with treatment)
+  const values = [95, 88, 82, 79, 74, 78];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  const normalMax = 70; // upper ref range
+  let progress = 0;
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = (rect.width - 40) * dpr;
+    canvas.height = 200 * dpr;
+    ctx.scale(dpr, dpr);
+    draw(progress);
+  }
+
+  function draw(p) {
+    const W = canvas.width / (window.devicePixelRatio || 1);
+    const H = 200;
+    ctx.clearRect(0, 0, W, H);
+
+    const pad = { l: 36, r: 16, t: 16, b: 32 };
+    const cW = W - pad.l - pad.r;
+    const cH = H - pad.t - pad.b;
+    const maxV = 110, minV = 55;
+
+    // Reference range shading
+    const refY = pad.t + cH - ((normalMax - minV) / (maxV - minV)) * cH;
+    ctx.fillStyle = 'rgba(93,201,156,0.08)';
+    ctx.fillRect(pad.l, refY, cW, pad.t + cH - refY);
+
+    // Reference line
+    ctx.strokeStyle = 'rgba(93,201,156,0.5)';
+    ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(pad.l, refY); ctx.lineTo(pad.l + cW, refY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Y axis labels
+    ctx.fillStyle = 'rgba(160,140,200,0.7)';
+    ctx.font = '10px system-ui'; ctx.textAlign = 'right';
+    [60, 70, 80, 90, 100].forEach(v => {
+      const y = pad.t + cH - ((v - minV) / (maxV - minV)) * cH;
+      ctx.fillText(v, pad.l - 4, y + 3);
+    });
+    ctx.fillText('ng/dL', pad.l - 4, pad.t - 4);
+
+    const pts = values.map((v, i) => ({
+      x: pad.l + (i / (values.length - 1)) * cW,
+      y: pad.t + cH - ((v - minV) / (maxV - minV)) * cH,
+      v
+    }));
+
+    const visCount = Math.min(1 + Math.floor(p * (pts.length - 1) + 0.5), pts.length);
+
+    // Area fill
+    const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + cH);
+    grad.addColorStop(0, 'rgba(159,90,240,0.3)');
+    grad.addColorStop(1, 'rgba(159,90,240,0.02)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pad.t + cH);
+    pts.slice(0, visCount).forEach(pt => ctx.lineTo(pt.x, pt.y));
+    ctx.lineTo(pts[Math.min(visCount - 1, pts.length - 1)].x, pad.t + cH);
+    ctx.closePath(); ctx.fill();
+
+    // Line
+    ctx.strokeStyle = 'rgba(159,90,240,0.9)';
+    ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    pts.slice(0, visCount).forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+    ctx.stroke();
+
+    // Points + labels
+    pts.slice(0, visCount).forEach((pt, i) => {
+      const aboveRange = pt.v > normalMax;
+      ctx.fillStyle = aboveRange ? 'rgba(245,184,64,1)' : 'rgba(93,201,156,1)';
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = 'rgba(240,234,255,0.85)';
+      ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(pt.v, pt.x, pt.y - 10);
+      ctx.fillStyle = 'rgba(160,140,200,0.6)';
+      ctx.fillText(months[i], pt.x, H - 6);
+    });
+
+    // Ref label
+    ctx.fillStyle = 'rgba(93,201,156,0.8)';
+    ctx.font = '10px system-ui'; ctx.textAlign = 'left';
+    ctx.fillText('Normal max', pad.l + 4, refY - 4);
+  }
+
+  function animate() {
+    progress += 0.05;
+    if (progress >= 1) { progress = 1; draw(1); return; }
+    draw(progress);
+    requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  const obs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) { animate(); obs.disconnect(); }
+  }, { threshold: 0.4 });
+  obs.observe(canvas);
+})();
+</script>
+</body>
+</html>
